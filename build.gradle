@@ -1,0 +1,149 @@
+plugins {
+    id 'application'
+    id 'java'
+    id 'maven-publish'
+    id 'net.nemerosa.versioning' version '1.5.0'
+    id 'com.jfrog.bintray' version '1.6'
+    id 'nebula.override' version "3.0.2"
+}
+
+sourceCompatibility = '1.8'
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+//apply from: 'http://gradle-plugins.mihosoft.eu/latest/vlicenseheader.gradle'
+//repairHeaders.licenseHeaderText = new File(projectDir,'./license-template.txt')
+
+task wrapper(type: Wrapper, description: 'Creates and deploys the Gradle wrapper to the current directory.') {
+    gradleVersion = '2.11'
+}
+
+repositories {
+    mavenCentral()
+    jcenter()
+}
+
+// javadoc is way too strict for my taste.
+if (JavaVersion.current().isJava8Compatible()) {
+    allprojects {
+        tasks.withType(Javadoc) {
+            options.addStringOption('Xdoclint:none', '-quiet')
+        }
+    }
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+// create one jar for the source files
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives jar
+    archives javadocJar
+    archives sourcesJar
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.+'
+    
+    compile group: 'org.jogamp.jogl', name: 'jogl-all', version: '2.3.2'
+    compile group: 'org.jogamp.gluegen', name: 'gluegen-rt', version: '2.3.2'
+}
+
+Date buildTimeAndDate = new Date()
+ext {
+    buildDate = new java.text.SimpleDateFormat('yyyy-MM-dd').format(buildTimeAndDate)
+    buildTime = new java.text.SimpleDateFormat('HH:mm:ss.SSSZ').format(buildTimeAndDate)
+}
+
+jar {
+    manifest {
+   
+        attributes(
+          'Built-By': System.properties['user.name'],
+          'Created-By': System.properties['java.version'] + " (" + System.properties['java.vendor'] + " " + System.properties['java.vm.version'] + ")",
+          'Build-Date': project.buildDate,
+          'Build-Time': project.buildTime,
+          'Build-Revision': versioning.info.commit,
+          'Specification-Title': project.name,
+          'Specification-Version': project.version,
+          'Implementation-Title': project.name,
+          'Implementation-Version': project.version
+        )
+    }
+}
+
+
+def pomConfig = {
+    name 'extj3d'
+    description 'ExtJ3D'
+    url 'https://github.com/miho/ExtJ3D/wiki'
+    inceptionYear '2016'
+    licenses {
+        license([:]) {
+            name 'BSD 2-Clause'
+            url 'https://github.com/miho/ExtJ3D/blob/master/LICENSE.txt'
+            distribution 'repo'
+        }
+        license([:]) {
+            name 'LGPL-2.0'
+            url 'https://github.com/miho/ExtJ3D/blob/master/LICENSE.txt'
+            distribution 'repo'
+        }
+    }
+    scm {
+        url 'scm:git@github.com:miho/ExtJ3D.git'
+        connection 'scm:git@github.com:miho/ExtJ3D.git'
+        developerConnection 'scm:git@github.com:miho/ExtJ3D.git'
+    }
+    developers {
+        developer {
+            id 'miho'
+            name 'Michael Hoffer'
+        }
+    }
+}
+
+publishing {
+    publications {
+        mavenCustom(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
+
+            pom.withXml {
+                def root = asNode()
+                root.appendNode 'description', 'ExtJ3D'
+                root.children().last() + pomConfig
+            }
+        }
+    }
+}
+
+if (!project.hasProperty('bintrayUsername')) ext.bintrayUsername = ''
+if (!project.hasProperty('bintrayApiKey')) ext.bintrayApiKey = ''
+
+bintray {
+    user = project.bintrayUsername
+    key = project.bintrayApiKey
+    publications = ['mavenCustom']
+    pkg {
+        repo                  = 'Ext'
+        userOrg               = 'miho'
+        name                  = project.name
+        desc                  = 'ExtJ3D'
+        licenses              = ['BSD 2-Clause', 'LGPL-2.1']
+        labels                = ['java', 'java',  '3D',  'STL',  'OBJ']
+        websiteUrl            = 'https://github.com/miho/ExtJ3D/wiki'
+        issueTrackerUrl       = 'https://github.com/miho/ExtJ3D/issues'
+        vcsUrl                = 'git@github.com:miho/ExtJ3D.git'
+        publicDownloadNumbers = true
+    }
+}
+
