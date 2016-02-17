@@ -24,8 +24,12 @@ public class Font3DUtil {
     }
 
     public static TriangleArray charToPolygon(char c, Font font, double depth) {
+        return charToPolygon(c, font, depth, 0.0001);
+    }
 
-        Font3D f3d = new Font3D(font, 0.00001, new FontExtrusion());
+    public static TriangleArray charToPolygon(char c, Font font, double depth, double resolution) {
+
+        Font3D f3d = new Font3D(font, resolution, new FontExtrusion());
 
         GeometryArray ga = f3d.getGlyphGeometry(c);
 
